@@ -1,5 +1,5 @@
 %===============================================================================
-% Theoria.cls (v0.2j) — modern physics‑paper class
+% Theoria.cls (v0.2k) — modern physics‑paper class
 %===============================================================================
 % This class provides:
 %   • Libertinus text + NewTX math + Mathalfa for extended alphabets
@@ -93,97 +93,123 @@
 %===============================================================================
 % 8) Author, affiliation & email handling
 %===============================================================================
-\RequirePackage{etoolbox}
+\RequirePackage{etoolbox}% for \ifx, \protected@xdef, etc.
 \makeatletter
-  % counters
-  \newcounter{authorctr}
-  \newcounter{affilctr}
-  \newcounter{emailctr}
+  %–– counters ––
+  \newcounter{authorctr}%
+  \newcounter{affilctr}%
+  \newcounter{emailctr}%
 
-  % store \author{name}
+  %–– capture each \author{Name} ––
   \renewcommand{\author}[1]{%
-    \stepcounter{authorctr}%
+    \stepcounter{authorctr}% increment author count
     \expandafter\gdef\csname Theoria@author@\theauthorctr\endcsname{#1}%
-  }
+  }%
 
-  % deduplicate/store affiliation
+  %–– deduplicate + store affiliation text ––
   \newcommand{\affiliation}[1]{%
     \begingroup
       \expandafter\ifx\csname foundaffil@\detokenize{#1}\endcsname\relax
-        \stepcounter{affilctr}% assign new index
+        \stepcounter{affilctr}% new affiliation index
         \expandafter\protected@xdef\csname foundaffil@\detokenize{#1}\endcsname{\theaffilctr}%
         \expandafter\gdef\csname Theoria@affiltext@\theaffilctr\endcsname{#1}%
       \fi
     \endgroup
-    % record for this author
+    % record this author→affiliation link
     \expandafter\gdef\csname Theoria@authoraffil@\theauthorctr\endcsname{%
       \csname foundaffil@\detokenize{#1}\endcsname
     }%
-  }
+  }%
 
-  % per-author email -> corresponding marker
+  %–– per‐author email (marks corresponding authors) ––
   \newcommand{\email}[1]{%
-    \stepcounter{emailctr}% assign symbol
-    \expandafter\gdef\csname Theoria@authoremail@\theauthorctr\endcsname{#1}% store
-  }
+    \stepcounter{emailctr}% assign next symbol index
+    \expandafter\gdef\csname Theoria@authoremail@\theauthorctr\endcsname{#1}%
+  }%
 
-  % print authors with affiliation superscripts and email symbols
+  %------------------------------------------------------------------------------%
+  % Print author list: 
+  %  • if multiple affiliations → name¹ + … ; if single → no affiliation num.
+  %  • always append email symbol if \email was used
+  %------------------------------------------------------------------------------%
   \newcommand{\printauthors}{%
-    {\renewcommand{\thefootnote}{\fnsymbol{footnote}}% use symbolic footnotes
-     \setcounter{footnote}{1}% reset
-     \@tempcnta=1
-     \loop
-       \ifnum\@tempcnta>\value{authorctr}\else
-         \csname Theoria@author@\the\@tempcnta\endcsname
-         % affiliation tag
-         \@ifundefined{Theoria@authoraffil@\the\@tempcnta}{}{%
-           \textsuperscript{\csname Theoria@authoraffil@\the\@tempcnta\endcsname}%
-         }%
-         % email symbol
-         \@ifundefined{Theoria@authoremail@\the\@tempcnta}{}{%
-           \textsuperscript{\fnsymbol{footnote}}\stepcounter{footnote}% next symbol
-         }%
-         \ifnum\@tempcnta<\value{authorctr}, \fi\ 
-         \advance\@tempcnta by1
-     \repeat
-    }
-  }
+    {%
+      \renewcommand{\thefootnote}{\fnsymbol{footnote}}%
+      \setcounter{footnote}{1}%
+      \@tempcnta=1
+      \loop
+        \ifnum\@tempcnta>\value{authorctr}\else
+          % name
+          \csname Theoria@author@\the\@tempcnta\endcsname
+          % affiliation number if >1 different affils
+          \ifnum\value{affilctr}>1
+            \@ifundefined{Theoria@authoraffil@\the\@tempcnta}{}{%
+              \textsuperscript{%
+                \csname Theoria@authoraffil@\the\@tempcnta\endcsname
+              }%
+            }%
+          \fi
+          % email symbol if defined
+          \@ifundefined{Theoria@authoremail@\the\@tempcnta}{}{%
+            \textsuperscript{\fnsymbol{footnote}}%
+            \stepcounter{footnote}%
+          }%
+          % comma separation
+          \ifnum\@tempcnta<\value{authorctr}, \fi\ 
+          \advance\@tempcnta by1
+      \repeat
+    }%
+  }%
 
-  % print affiliation list, deduplicated
+  %------------------------------------------------------------------------------%
+  % Print affiliation list:
+  %  • numbered if >1; otherwise the lone text
+  %------------------------------------------------------------------------------%
   \newcommand{\printaffils}{%
-    \@tempcnta=1
-    \loop
-      \ifnum\@tempcnta>\value{affilctr}\else
-        \textsuperscript{\the\@tempcnta}\space
-        \csname Theoria@affiltext@\the\@tempcnta\endcsname\par
-        \advance\@tempcnta by1
-    \repeat
-  }
+    \ifnum\value{affilctr}>1
+      \@tempcnta=1
+      \loop
+        \ifnum\@tempcnta>\value{affilctr}\else
+          \textsuperscript{\the\@tempcnta}\space%
+          \csname Theoria@affiltext@\the\@tempcnta\endcsname\par
+          \advance\@tempcnta by1
+      \repeat
+    \else
+      \csname Theoria@affiltext@1\endcsname\par
+    \fi
+  }%
 
-  % custom maketitle
+  %------------------------------------------------------------------------------%
+  % Custom \maketitle: title, authors, affiliations, email footnotes, date
+  %------------------------------------------------------------------------------%
   \renewcommand{\maketitle}{%
     \begin{flushleft}
       {\LARGE\bfseries\@title\par}\vskip1.5em
       {\large\printauthors\par}\vskip0.5em
       {\normalsize\itshape\printaffils}\vskip1em
-      % email footnotes
+      % symbol‐footnotes for corresponding‐author emails
       {\renewcommand{\thefootnote}{\fnsymbol{footnote}}%
-       \setcounter{footnote}{1}
+       \setcounter{footnote}{1}%
        \@tempcnta=1
        \loop
          \ifnum\@tempcnta>\value{authorctr}\else
            \@ifundefined{Theoria@authoremail@\the\@tempcnta}{}{%
-             \footnotetext[\value{footnote}]{Corresponding author:~\href{mailto:\csname Theoria@authoremail@\the\@tempcnta\endcsname}{\csname Theoria@authoremail@\the\@tempcnta\endcsname}}%
-             \stepcounter{footnote}
+             \footnotetext[\value{footnote}]{%
+               Corresponding author:~%
+               \href{mailto:\csname Theoria@authoremail@\the\@tempcnta\endcsname}{%
+                 \csname Theoria@authoremail@\the\@tempcnta\endcsname
+               }%
+             }%
+             \stepcounter{footnote}%
            }%
            \advance\@tempcnta by1
        \repeat
-      }
-      % restore numeric footnotes
+      }%
+      % restore arabic footnotes
       \setcounter{footnote}{0}\renewcommand{\thefootnote}{\arabic{footnote}}%
       {\@date\par}
     \end{flushleft}%
-  }
+  }%
 \makeatother
 
 %===============================================================================
